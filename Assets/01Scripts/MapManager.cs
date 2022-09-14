@@ -89,4 +89,16 @@ public class MapManager : MonoBehaviour
     {
         return DictAdjcentIndex[iIndex];
     }
+
+    public List<(int,int,int)> GetListEdge(int iIndex)//, int iDirection)
+    {
+        List<(int, int, int)> result = new List<(int, int, int)>();
+        foreach((int,int,int) tuple in ListEdge)
+        {
+            if (tuple.Item1 == iIndex)// && tuple.Item2 == iDirection)
+                result.Add(tuple);
+        }
+
+        return result;
+    }
 }
