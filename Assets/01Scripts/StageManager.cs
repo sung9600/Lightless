@@ -24,6 +24,8 @@ public class StageManager : MonoBehaviour
     private GameObject gameover = null;
     [SerializeField]
     private GameObject tutorial = null;
+    [SerializeField]
+    private GameObject PlayerLight = null;
 
     private void Awake()
     {
@@ -69,6 +71,8 @@ public class StageManager : MonoBehaviour
 
     void AfterMoveCallback()
     {
+        int CurrentPlayerPos = MapManager.GetInstance().GetCurrentPos();
+        PlayerLight.transform.position = MapManager.GetInstance().GetBaseTile(CurrentPlayerPos).transform.position;
         turnIndicator.text = "Turn Remain : " + --turnCount;
         if(turnCount == 0 && eStageState != StageState.GameClear)
         {
