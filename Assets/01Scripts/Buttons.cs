@@ -9,7 +9,8 @@ public class Buttons : MonoBehaviour, IPointerDownHandler
     enum buttonType
     {
         AimOnOff,
-        Inventory
+        Inventory,
+        Inventory_Gem
     }
     [SerializeField]
     private buttonType type;
@@ -30,7 +31,7 @@ public class Buttons : MonoBehaviour, IPointerDownHandler
         }
     }
 
-    private void AimOnOff()
+    public void AimOnOff()
     {
         if (StageManager.GetInstance().GetInventory().Count == 0)
             return;
@@ -38,22 +39,18 @@ public class Buttons : MonoBehaviour, IPointerDownHandler
         StageState stageState = StageManager.GetInstance().GetStageState();
         if (stageState == StageState.Default && StageManager.GetInstance().GetInventory().Count > 0)
         {
-            gameObject.GetComponent<Image>().color = Color.green;
+            gameObject.GetComponent<Image>().color = Colors.playerTileColor;
             StageManager.GetInstance().SetStageState(StageState.Aiming);
         }
         else if (stageState == StageState.Aiming)
         {
-            gameObject.GetComponent<Image>().color = Color.white;
+            gameObject.GetComponent<Image>().color = Colors.white;
             StageManager.GetInstance().SetStageState(StageState.Default);
         }
     }
 
-    private void Inventory()
+    public void Inventory()
     {
-        StageState stageState = StageManager.GetInstance().GetStageState();
-        if (stageState == StageState.Default)
-            StageManager.GetInstance().SetStageState(StageState.Inventory);
-        else if (stageState == StageState.Inventory)
-            StageManager.GetInstance().SetStageState(StageState.Default);
+        StageManager.GetInstance().ShowHideInventory();
     }
 }

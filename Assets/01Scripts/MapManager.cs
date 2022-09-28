@@ -80,9 +80,17 @@ public class MapManager : MonoBehaviour
         iCurrentPos = iTarget;
     }
 
-    public void ChangeBaseTile(int iIndex, BaseTile baseTile)
+    public void ChangeBaseTile(int iIndex, TileType tileType)
     {
-        ListBaseTiles[iIndex] = baseTile;
+        switch (tileType)
+        {
+            case TileType.Default:
+                {
+                    ListBaseTiles[iIndex].SetTileType(tileType);
+                    ListBaseTiles[iIndex].GetComponent<SpriteRenderer>().color = Colors.baseTileColor;
+                    break;
+                }
+        }
     }
 
     public List<int> GetAdjList(int iIndex)
@@ -100,5 +108,48 @@ public class MapManager : MonoBehaviour
         }
 
         return result;
+    }
+
+    public List<int> GetShootingPath(int iStartIndex, int iDirection)
+    {
+        int iNextTile = GetAdjTileByDirection(iStartIndex, iDirection);
+        if (iNextTile == -1)
+            return new List<int>();
+
+        List<int> path = new List<int>();
+        while (iNextTile != -1)
+        {
+            path.Add(iNextTile);
+            if (GetBaseTile(iNextTile).GetTileType() == TileType.Goal ||
+                GetBaseTile(iNextTile).GetTileType() == TileType.Wall)
+            {
+                break;
+            }
+
+            iNextTile = GetAdjTileByDirection(iNextTile, iDirection);          
+        }
+
+        return path;
+    }
+
+    public int GetAdjTileByDirection(int iStartIndex, int iDirection)
+    {
+        foreach((int,int,int) info in ListEdge)
+        {
+            if(info.Item1 == iStartIndex && info.Item2 == iDirection)
+            {
+                return info.Item3;
+            }
+        }
+
+        return -1;
+    }    
+
+    public void DestroyObstacleTile(List<int> positions)
+    {
+        foreach(int iPosition in positions)
+        {
+            ChangeBaseTile(iPosition, TileType.Default);
+        }
     }
 }

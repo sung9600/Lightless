@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Runtime.CompilerServices;
 
 public class StageManager : MonoBehaviour
 {
@@ -13,9 +14,18 @@ public class StageManager : MonoBehaviour
     private StageState eStageState = StageState.Tutorial;
     [SerializeField]
     private List<GemType> inventory = new List<GemType>();
+    [SerializeField]
+    private GemType selectedGem = GemType.Null;
 
     public delegate void AfterMove();
     public AfterMove Del_AfterMove;
+    public GameObject AimButton;
+    public GameObject InventoryButton;
+    public GameObject InventoryGameObject;
+    public List<GameObject> InventorySquares = new List<GameObject>();
+    private StageState prevState = StageState.Default;
+
+
     [SerializeField]
     private TextMeshProUGUI turnIndicator;
     [SerializeField]
@@ -27,6 +37,11 @@ public class StageManager : MonoBehaviour
     [SerializeField]
     private GameObject PlayerLight = null;
 
+    [SerializeField]
+    private List<Obstacles> obstacles = new List<Obstacles>();
+
+    private Dictionary<GemType, int> DictRequiredGems = new Dictionary<GemType, int>();
+
     private void Awake()
     {
         if (SM_Instance == null)
@@ -34,10 +49,20 @@ public class StageManager : MonoBehaviour
 
         Map_Instance.MyAwake();
         Del_AfterMove = AfterMoveCallback;
+
+        // 이부분 개선필요
+        obstacles.Add(new Tree(1, new List<int>() { 4 }));
+        obstacles.Add(new Tree(1, new List<int>() { 5 }));
+        obstacles.Add(new Tree(1, new List<int>() { 8 }));
+        obstacles.Add(new Tree(1, new List<int>() { 14 }));
+        obstacles.Add(new Tree(1, new List<int>() { 16 }));
     }
     private void Start()
     {
         Map_Instance.MyStart();
+
+        // For Test
+        DictRequiredGems.Add(GemType.TempGem, 1);
     }
     private void Update()
     {
@@ -45,6 +70,7 @@ public class StageManager : MonoBehaviour
     }
 
 
+    #region GetSet
     public static StageManager GetInstance()
     {
         return SM_Instance;
@@ -64,15 +90,53 @@ public class StageManager : MonoBehaviour
     {
         return inventory;
     }
+    public Dictionary<GemType,int> GetRequiredGems()
+    {
+        return DictRequiredGems;
+    }
+    public void SetRequiredGems(GemType gem, int iCount)
+    {
+        DictRequiredGems[gem] = iCount;
+    }
+    public void ReduceRequiredGem(GemType gem)
+    {
+        DictRequiredGems[gem]--;
+    }
+    public void ReduceRequiredGem()
+    {
+        if(selectedGem != GemType.Null)
+            DictRequiredGems[selectedGem]--;
+    }
+    public GemType GetSelectedGem()
+    {
+        return selectedGem;
+    }
+    public void SetSelectedGem(GemType gem)
+    {
+        selectedGem = gem;
+    }
+    public List<Obstacles> GetObstacles()
+    {
+        return obstacles;
+    }
+    public void SetObstacles(List<Obstacles> obstacles)
+    {
+        this.obstacles = obstacles;
+    }
+    #endregion
     public void AddGemToInventory(GemType gem)
     {
         inventory.Add(gem);
+        InventorySquares[inventory.Count - 1].GetComponent<InventoryButton>().SetGem(gem);
     }
 
     void AfterMoveCallback()
     {
         int CurrentPlayerPos = MapManager.GetInstance().GetCurrentPos();
-        PlayerLight.transform.position = MapManager.GetInstance().GetBaseTile(CurrentPlayerPos).transform.position;
+
+        if(PlayerLight != null)
+            PlayerLight.transform.position = MapManager.GetInstance().GetBaseTile(CurrentPlayerPos).transform.position;
+
         turnIndicator.text = "Turn Remain : " + --turnCount;
         if(turnCount == 0 && eStageState != StageState.GameClear)
         {
@@ -90,5 +154,20 @@ public class StageManager : MonoBehaviour
     {
         eStageState = StageState.Default;
         tutorial.SetActive(false);
+    }
+
+    public void ShowHideInventory()
+    {
+        if(eStageState == StageState.Inventory)
+        {
+            InventoryGameObject.SetActive(false);
+            SetStageState(prevState);
+        }
+        else
+        {
+            prevState = eStageState;
+            InventoryGameObject.SetActive(true);
+            SetStageState(StageState.Inventory);
+        }
     }
 }

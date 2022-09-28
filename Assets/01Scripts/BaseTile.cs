@@ -2,16 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.UI;
 
 public class BaseTile : MonoBehaviour
 {
     public int iTileIndex;
     private static int iCurrentTotalTileCount = 0;
     protected SpriteRenderer SR_SpriteRenderer;
-
-    protected static Color playerTileColor = new Color(0, 1, 0);
-    protected static Color baseTileColor = new Color(1, 1, 1);
-    protected static Color candidTileColor = new Color(0, 0, 1);
 
     [SerializeField]
     protected TileType eTileType = TileType.Default;
@@ -20,7 +17,7 @@ public class BaseTile : MonoBehaviour
     [SerializeField]
     public bool b_CanGo { get; set; }
 
-    protected static List<int> aimPathIndex = new List<int>();
+    protected static List<int> aimPathIndex = new List<int>();    
 
     protected virtual void Awake()
     {
@@ -53,9 +50,11 @@ public class BaseTile : MonoBehaviour
                     {
                         break;
                     }
+                case TileType.Wall:
                 case TileType.Default:
                 case TileType.Gem:
                     {
+                        StageManager.GetInstance().AimButton.GetComponent<Buttons>().AimOnOff();
                         Shoot();
                         break;
                     }
@@ -70,19 +69,19 @@ public class BaseTile : MonoBehaviour
             foreach (int iPathIndex in path)
             {
                 BaseTile PathTile = MapManager.GetInstance().GetBaseTile(iPathIndex);
-                PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = playerTileColor;
+                PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = Colors.playerTileColor;
             }
             aimPathIndex = path;
         }
     }
     protected void OnMouseExit()
     {
-        if (StageManager.GetInstance().GetStageState() == StageState.Aiming && aimPathIndex.Count > 0)
+        if (aimPathIndex.Count > 0)
         {
             foreach(int iPathIndex in aimPathIndex)
             {
                 BaseTile PathTile = MapManager.GetInstance().GetBaseTile(iPathIndex);
-                PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = baseTileColor;
+                PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = Colors.baseTileColor;
             }
             aimPathIndex.Clear();
         }
@@ -134,7 +133,7 @@ public class BaseTile : MonoBehaviour
                         if (eGemType != GemType.Null)
                         {
                             StageManager.GetInstance().AddGemToInventory(eGemType);
-                            transform.GetChild(0).GetComponent<SpriteRenderer>().color = baseTileColor;
+                            transform.GetChild(0).GetComponent<SpriteRenderer>().color = Colors.baseTileColor;
                         }
                     }
 
@@ -148,14 +147,14 @@ public class BaseTile : MonoBehaviour
                             BaseTile baseTile = MapManager.GetInstance().GetBaseTile(iTargetTileIndex);
                             if (baseTile.GetTileType() == TileType.Wall)
                                 continue;
-                            MapManager.GetInstance().GetBaseTile(iTargetTileIndex).GetComponent<SpriteRenderer>().color = baseTileColor;
+                            MapManager.GetInstance().GetBaseTile(iTargetTileIndex).GetComponent<SpriteRenderer>().color = Colors.baseTileColor;
                             MapManager.GetInstance().GetBaseTile(iTargetTileIndex).b_CanGo = false;
                             MapManager.GetInstance().GetBaseTile(iTargetTileIndex).SetTileType(TileType.Default);
                         }
                         needChangeTileList.Remove(iCurrentTile);
                     }
 
-                    SR_SpriteRenderer.color = playerTileColor;
+                    SR_SpriteRenderer.color = Colors.playerTileColor;
                     SetTileType(TileType.Player);
                     // state는 Default으로
                     StageManager.GetInstance().SetStageState(StageState.Default);
@@ -171,7 +170,7 @@ public class BaseTile : MonoBehaviour
                         foreach (int iPathIndex in aimPathIndex)
                         {
                             BaseTile PathTile = MapManager.GetInstance().GetBaseTile(iPathIndex);
-                            PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = baseTileColor;
+                            PathTile.transform.GetChild(0).GetComponent<SpriteRenderer>().color = Colors.baseTileColor;
                         }
                         aimPathIndex.Clear();
 
@@ -194,7 +193,7 @@ public class BaseTile : MonoBehaviour
                         BaseTile AdjTile = MapManager.GetInstance().GetBaseTile(iIndex);
                         if (AdjTile.GetTileType() == TileType.Wall)
                             continue;
-                        AdjTile.gameObject.GetComponent<SpriteRenderer>().color = candidTileColor;
+                        AdjTile.gameObject.GetComponent<SpriteRenderer>().color = Colors.candidTileColor;
                         AdjTile.b_CanGo = true;
                     }
 
@@ -214,50 +213,38 @@ public class BaseTile : MonoBehaviour
 
     private int Shoot()
     {
-        // TODO : 장애물 예외처리
-        int iStartIndex = MapManager.GetInstance().GetCurrentPos();
-        int iTargetIndex = iTileIndex;
-
-        if (!MapManager.GetInstance().GetAdjList(iStartIndex).Contains(iTargetIndex))
-            return -1;
-
-        int iDirection = -1;
+        if(MapManager.GetInstance().GetBaseTile(aimPathIndex.Last()).GetTileType() == TileType.Gem)
         {
-            List<(int, int, int)> startAdjInfo = MapManager.GetInstance().GetListEdge(iStartIndex);
-
-            foreach ((int, int, int) adjInfo in startAdjInfo)
+            // Stage의 클리어조건에 선택한젬이 있는지 확인
+            if (!StageManager.GetInstance().GetRequiredGems().ContainsKey(StageManager.GetInstance().GetSelectedGem()))
             {
-                if (adjInfo.Item1 == iStartIndex && adjInfo.Item3 == iTargetIndex)
+                // 그냥 인벤토리에서 제거 or 그냥 return
+            }
+
+            StageManager.GetInstance().ReduceRequiredGem();
+            StageManager.GetInstance().SetStageState(StageState.Default);
+        }
+        else if(MapManager.GetInstance().GetBaseTile(aimPathIndex.Last()).GetTileType() == TileType.Wall)
+        {
+            // 장애물 내구도 1감소, 내구도 0되면 파괴
+            List<Obstacles> tempObstacles = StageManager.GetInstance().GetObstacles().ToList();
+            foreach (Obstacles obstacle in tempObstacles)
+            {
+                if (obstacle.ContainPosition(aimPathIndex.Last()))
                 {
-                    iDirection = adjInfo.Item2;
+                    //TODO : 젬에 따라 데미지 다르게
+                    obstacle.GetDamage(1);
                 }
             }
         }
-
-        if (iDirection == -1)
-            return -1;
-
-        int iNextStart = iTargetIndex;
-        while (true)
+        else
         {
-            List<(int, int, int)> startAdjInfo = MapManager.GetInstance().GetListEdge(iNextStart);
-
-            bool bSuccess = false;
-            foreach((int,int,int) adjinfo in startAdjInfo)
-            {
-                if(adjinfo.Item2 == iDirection)
-                {
-                    iNextStart = adjinfo.Item3;
-                    bSuccess = true;
-                }
-            }
-
-            if (!bSuccess || MapManager.GetInstance().GetBaseTile(iNextStart).GetTileType()==TileType.Wall)
-                break;
+            // 그냥 젬 소멸
         }
+
+        StageManager.GetInstance().SetStageState(StageState.Default);
 
         return 0;
-
     }
     
     private List<int> GetAimPath()
@@ -287,40 +274,9 @@ public class BaseTile : MonoBehaviour
                 if (iDirection == -1)
                     return path;
             }
+            path = MapManager.GetInstance().GetShootingPath(iStartIndex, iDirection);
 
-            int iNextStart = iTargetIndex;
-            path.Add(iNextStart);
-
-            if (MapManager.GetInstance().GetBaseTile(iNextStart).GetTileType() == TileType.Wall)
-                return path;
-
-            while (true)
-            {
-                List<(int, int, int)> startAdjInfo = MapManager.GetInstance().GetListEdge(iNextStart);
-
-                bool bSuccess = false;
-                foreach ((int, int, int) adjinfo in startAdjInfo)
-                {
-                    if (adjinfo.Item2 == iDirection)
-                    {
-                        iNextStart = adjinfo.Item3;
-                        bSuccess = true;
-                        path.Add(iNextStart);
-                    }
-                }
-
-                // 못찾았거나, 있긴한데 wall인경우
-                if (!bSuccess)
-                {
-                    break;
-                }
-            }
-
-        }
-
-        foreach(int i in path)
-        {
-            Debug.Log(i);
+            //여기서 사거리로 갯수 잘라내면 될듯?
         }
         return path;
     }
